@@ -37,6 +37,8 @@
 #include <board.h>
 #include <list.h>
 #include <kernel/thread.h>
+#include <dev/fbcon.h>
+#include <msm_panel.h>
 
 struct dt_entry_v1
 {
@@ -1274,6 +1276,133 @@ int dev_tree_add_mem_info(void *fdt, uint32_t offset, uint64_t addr, uint64_t si
 	return ret;
 }
 
+static const char *format_name(int format)
+{
+	switch (format) {
+	case FB_FORMAT_RGB565:
+		return "r5g6b5";
+	case FB_FORMAT_RGB8888:
+		return "a8b8g8r8";
+	case FB_FORMAT_RGB888:
+		/* nothing understands packed 24b.. so give up! */
+	default:
+		return NULL;
+	}
+}
+
+static int populate_simplefb_node(void *fdt)
+{
+	const char compatible[] = "simple-framebuffer";
+	extern struct msm_fb_panel_data panel;
+	extern uint8_t display_enable;
+	struct fbcon_config *fb = &panel.fb;
+	const char *format = format_name(fb->format);
+	uint64_t cells[2];
+	char name[32];
+	int offset, ret;
+
+
+	if (!display_enable || !format)
+		return 0;
+
+	offset = fdt_path_offset(fdt, "/chosen");
+	offset = fdt_add_subnode(fdt, offset, "framebuffer");
+	if (offset < 0) {
+		dprintf(CRITICAL, "%s: Could not add framebuffer node", __func__);
+		return offset;
+	}
+
+	snprintf(name, sizeof(name), "framebuffer@%x", fb->base);
+	ret = fdt_set_name(fdt, offset, name);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set name", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop(fdt, offset, "compatible", compatible, sizeof(compatible));
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"compatible\"", __func__);
+		return ret;
+	}
+
+	/* setup reg node: */
+	// TODO cells should be 64b or 32b depending on whether we are
+	// booting a 32b or 64b image.  Probably should look at #address-cells
+	// and #size-cells to figure out what to do.
+	// NOTE double cast to prevent sign extension:
+	cells[0] = cpu_to_fdt64((uint64_t)(unsigned long)fb->base);
+	cells[1] = cpu_to_fdt64((uint64_t)(fb->height * fb->stride * fb->bpp / 8));
+	ret = fdt_setprop(fdt, offset, "reg", cells, sizeof(cells));
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"reg\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop_u32(fdt, offset, "width", fb->width);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"width\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop_u32(fdt, offset, "height", fb->height);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"height\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop_u32(fdt, offset, "stride", fb->stride * fb->bpp / 8);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"stride\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop_string(fdt, offset, "format", format);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"format\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop_string(fdt, offset, "status", "okay");
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"status\"", __func__);
+		return ret;
+	}
+
+	/* if we are booting directly into linux, a reserved memory node
+	 * is also required for simplefb, otherwise the kernel won't
+	 * realize the framebuffer is not "normal" ram.  If EFI booting
+	 * this doesn't matter, since u-boot can correctly communicate
+	 * the memory map to the kernel via EFI.
+	 */
+	offset = fdt_path_offset(fdt, "/reserved-memory");
+	offset = fdt_add_subnode(fdt, offset, "framebuffer");
+	if (offset < 0) {
+		dprintf(CRITICAL, "%s: Could not add reserved-memory node", __func__);
+		return offset;
+	}
+
+	snprintf(name, sizeof(name), "framebuffer@%x", fb->base);
+	ret = fdt_set_name(fdt, offset, name);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set name", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop(fdt, offset, "reg", cells, sizeof(cells));
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"reg\"", __func__);
+		return ret;
+	}
+
+	ret = fdt_setprop(fdt, offset, "no-map", NULL, 0);
+	if (ret < 0) {
+		dprintf(CRITICAL, "%s: Could not set \"no-map\"", __func__);
+		return ret;
+	}
+
+	return 0;
+}
+
 /* Top level function that updates the device tree. */
 int update_device_tree(void *fdt, const char *cmdline,
 					   void *ramdisk, uint32_t ramdisk_size, unsigned char* mac)
@@ -1397,6 +1526,11 @@ int update_device_tree(void *fdt, const char *cmdline,
 				return ret;
 			}
 		}
+	}
+
+	ret = populate_simplefb_node(fdt);
+	if (ret) {
+		return ret;
 	}
 
 	fdt_pack(fdt);
