@@ -111,7 +111,7 @@ static void mdss_mdp_set_flush(struct msm_panel_info *pinfo,
 	uint32_t mdss_mdp_rev = readl(MDP_HW_REV);
 	switch (pinfo->pipe_type) {
 		case MDSS_MDP_PIPE_TYPE_RGB:
-			*ctl0_reg_val = 0x22048;
+			*ctl0_reg_val = 0x20048;
 			*ctl1_reg_val = 0x24090;
 			break;
 		case MDSS_MDP_PIPE_TYPE_DMA:
@@ -759,7 +759,7 @@ int mdp_dsi_video_config(struct msm_panel_info *pinfo,
 		mdss_intf_fetch_start_config(pinfo, MDP_INTF_2_BASE);
 	}
 
-	mdp_clk_gating_ctrl();
+	//mdp_clk_gating_ctrl();
 
 	mdp_select_pipe_type(pinfo, &left_pipe, &right_pipe);
 	mdss_vbif_setup();
@@ -951,7 +951,7 @@ int mdp_dsi_video_on(struct msm_panel_info *pinfo)
 	uint32_t ctl0_reg_val, ctl1_reg_val;
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
 	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
-	writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
+	//writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
 	writel(0x01, MDP_INTF_1_TIMING_ENGINE_EN  + mdss_mdp_intf_offset());
 
 	return NO_ERROR;
@@ -992,7 +992,7 @@ int mdp_dma_on(struct msm_panel_info *pinfo)
 	uint32_t ctl0_reg_val, ctl1_reg_val;
 	mdss_mdp_set_flush(pinfo, &ctl0_reg_val, &ctl1_reg_val);
 	writel(ctl0_reg_val, MDP_CTL_0_BASE + CTL_FLUSH);
-	writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
+	//writel(ctl1_reg_val, MDP_CTL_1_BASE + CTL_FLUSH);
 	writel(0x01, MDP_CTL_0_BASE + CTL_START);
 	return NO_ERROR;
 }

@@ -686,9 +686,9 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 	writel(0x02020202, ctl_base + INT_CTRL);
 
 	/* For 8916/8939, enable DSI timing double buffering */
-	if (readl(ctl_base) == DSI_HW_REV_103_1 &&
-				mdp_get_revision() != MDP_REV_305)
-		writel(0x1, ctl_base + TIMING_DB_MODE);
+	//if (readl(ctl_base) == DSI_HW_REV_103_1 &&
+	//			mdp_get_revision() != MDP_REV_305)
+	//	writel(0x1, ctl_base + TIMING_DB_MODE);
 
 	writel(((disp_width + hsync_porch0_bp) << 16) | hsync_porch0_bp,
 			ctl_base + VIDEO_MODE_ACTIVE_H);
@@ -725,7 +725,7 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 
 	writel(0x0, ctl_base + EOT_PACKET_CTRL);
 
-	writel(0x00000100, ctl_base + MISR_VIDEO_CTRL);
+	//writel(0x00000100, ctl_base + MISR_VIDEO_CTRL);
 
 	if (mdp_get_revision() >= MDP_REV_41 || mdp_get_revision() == MDP_REV_305) {
 		writel(low_pwr_stop_mode << 16 |
@@ -738,7 +738,7 @@ int mdss_dsi_video_mode_config(uint16_t disp_width,
 	}
 
 	writel(0x3fd08, ctl_base + HS_TIMER_CTRL);
-	writel(0x00010100, ctl_base + MISR_VIDEO_CTRL);
+	//writel(0x00010100, ctl_base + MISR_VIDEO_CTRL);
 
 	writel(0x00010100, ctl_base + INT_CTRL);
 	writel(0x02010202, ctl_base + INT_CTRL);
